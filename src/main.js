@@ -1,4 +1,5 @@
 import './style.css'
+import { inject } from '@vercel/analytics'
 import { loadAllRecalls } from './lib/api.js'
 import { buildMonthlySeries, monthLabel, tally, applyDateBasis } from './lib/transform.js'
 import {
@@ -40,6 +41,10 @@ const state = {
   types: new Set(PRODUCT_TYPES),
 }
 
+// Vercel Web Analytics — no-ops off Vercel; logs to the console in dev.
+// Also enable it in the Vercel project dashboard (Analytics tab).
+inject()
+
 const els = renderShell(document.getElementById('app'))
 const monthlyChart = createMonthlyChart(els.monthlyCanvas)
 const riskChart = createRiskChart(els.riskCanvas)
@@ -47,11 +52,22 @@ const typeChart = createTypeChart(els.typeCanvas)
 
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0)
 
+// Number of month buckets the current window spans (YTD = Jan..anchor month).
+function windowMonths() {
+  if (state.months === 'ytd') return (state.anchor?.getMonth() ?? 0) + 1
+  return state.months
+}
+
 function windowRecords() {
-  if (!state.months || !state.anchor) return state.all
-  const cutoff = new Date(state.anchor)
-  cutoff.setMonth(cutoff.getMonth() - (state.months - 1))
-  const cutoffKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`
+  if (!state.anchor || (!state.months && state.months !== 'ytd')) return state.all
+  let cutoffKey
+  if (state.months === 'ytd') {
+    cutoffKey = `${state.anchor.getFullYear()}-01`
+  } else {
+    const cutoff = new Date(state.anchor)
+    cutoff.setMonth(cutoff.getMonth() - (state.months - 1))
+    cutoffKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`
+  }
   return state.all.filter((r) => r.monthKey >= cutoffKey)
 }
 
@@ -66,7 +82,7 @@ const applyFilters = (records) =>
 
 function render() {
   const filtered = applyFilters(windowRecords())
-  const series = buildMonthlySeries(filtered, state.months, state.anchor)
+  const series = buildMonthlySeries(filtered, windowMonths(), state.anchor)
 
   updateMonthlyChart(monthlyChart, series, state.stackBy)
   updateBreakdownChart(riskChart, tally(filtered, 'risk'), RISK_LEVELS, RISK_COLORS)
@@ -93,7 +109,12 @@ function render() {
   renderStatCards(els.statCards, {
     total: filtered.length,
     agencySplit,
-    windowLabel: state.months ? `last ${state.months} months` : 'all time',
+    windowLabel:
+      state.months === 'ytd'
+        ? `${state.anchor.getFullYear()} year to date`
+        : state.months
+          ? `last ${state.months} months`
+          : 'all time',
     active: activeCount,
     activePct: pct(activeCount, filtered.length),
     classI: classICount,

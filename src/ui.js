@@ -8,6 +8,7 @@ import {
 } from './lib/categorize.js'
 
 const WINDOWS = [
+  { value: 'ytd', label: 'YTD' },
   { value: 12, label: '12 mo' },
   { value: 24, label: '24 mo' },
   { value: 36, label: '36 mo' },

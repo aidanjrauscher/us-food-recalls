@@ -23,6 +23,14 @@ npm run dev
 
 Open the printed URL (default http://localhost:5173).
 
+## Deploy
+
+Any static host works (`npm run build` → `dist/`). On **Vercel**, the app already
+calls `inject()` from `@vercel/analytics` in `src/main.js`, so once you enable
+**Web Analytics** in the Vercel project's *Analytics* tab, page views are
+collected automatically. Off Vercel the call is a harmless no-op (it logs to the
+console in dev).
+
 ## How data is fetched
 
 - **USDA FSIS** sends **no CORS headers** and rejects non-browser requests, so
