@@ -36,10 +36,15 @@ const state = {
   stackBy: 'risk',
   dateBasis: 'initiation', // 'initiation' | 'report' — which date drives every view
   activeOnly: false,
+  search: '', // free-text filter for the "Recalls in view" table only
   agencies: new Set(AGENCIES),
   risks: new Set(RISK_LEVELS),
   types: new Set(PRODUCT_TYPES),
 }
+
+// The facet-filtered set from the last render(); the table search narrows this
+// without re-touching the charts.
+let lastFiltered = []
 
 // Vercel Web Analytics — no-ops off Vercel; logs to the console in dev.
 // Also enable it in the Vercel project dashboard (Analytics tab).
@@ -124,10 +129,29 @@ function render() {
     peakMonth: peakKey ? monthLabel(peakKey) : '—',
   })
 
+  lastFiltered = filtered
+  updateTable()
+}
+
+// Renders just the "Recalls in view" table. Applies the free-text search
+// (all whitespace-separated terms must appear in the recall title, reason, or
+// product description) on top of the current facet filters.
+function updateTable() {
+  const terms = state.search.toLowerCase().split(/\s+/).filter(Boolean)
+  const rows = terms.length
+    ? lastFiltered.filter((r) => {
+        const hay = `${r.title} ${r.reason} ${r.summary}`.toLowerCase()
+        return terms.every((t) => hay.includes(t))
+      })
+    : lastFiltered
+
   els.dateColHead.textContent = state.dateBasis === 'report' ? 'Report date' : 'Initiation date'
-  renderTable(els.tableBody, filtered.slice(0, 300), state.dateBasis)
-  els.tableCount.textContent =
-    `${filtered.length} shown` + (filtered.length > 300 ? ' (first 300 in table)' : '')
+  renderTable(els.tableBody, rows.slice(0, 300), state.dateBasis)
+
+  const capped = rows.length > 300 ? ' · first 300 shown' : ''
+  els.tableCount.textContent = terms.length
+    ? `${rows.length} of ${lastFiltered.length} match${capped}`
+    : `${rows.length} shown${capped}`
 }
 
 function rebaseDates() {
@@ -201,6 +225,12 @@ async function init() {
   els.activeOnly.addEventListener('change', (e) => {
     state.activeOnly = e.target.checked
     render()
+  })
+
+  state.search = els.tableSearch.value.trim() // browsers may restore the field on reload
+  els.tableSearch.addEventListener('input', (e) => {
+    state.search = e.target.value.trim()
+    updateTable()
   })
 
   render()

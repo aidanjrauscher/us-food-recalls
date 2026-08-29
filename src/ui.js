@@ -105,9 +105,14 @@ export function renderShell(root) {
       </section>
 
       <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-        <div class="mb-3 flex items-center justify-between">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 class="text-sm font-semibold text-slate-200">Recalls in view</h2>
-          <span id="table-count" class="text-xs text-slate-500"></span>
+          <div class="flex flex-1 items-center justify-end gap-3">
+            <input id="table-search" type="search" autocomplete="off" spellcheck="false"
+              placeholder="Search recall title & description…"
+              class="w-full max-w-xs rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500" />
+            <span id="table-count" class="whitespace-nowrap text-xs text-slate-500"></span>
+          </div>
         </div>
         <div class="scroll-thin max-h-[460px] overflow-auto rounded-lg border border-slate-800">
           <table class="w-full text-left text-sm">
@@ -163,6 +168,7 @@ export function renderShell(root) {
     typeCanvas: root.querySelector('#type-chart'),
     tableBody: root.querySelector('#table-body'),
     tableCount: root.querySelector('#table-count'),
+    tableSearch: root.querySelector('#table-search'),
     dateColHead: root.querySelector('#date-col-head'),
   }
 }
@@ -297,7 +303,7 @@ const badge = (text, cls) =>
 export function renderTable(tbody, records, dateBasis = 'initiation') {
   if (!records.length) {
     tbody.innerHTML =
-      '<tr><td colspan="7" class="px-3 py-8 text-center text-slate-500">No recalls match the current filters.</td></tr>'
+      '<tr><td colspan="7" class="px-3 py-8 text-center text-slate-500">No recalls match the current filters or search.</td></tr>'
     return
   }
   const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
