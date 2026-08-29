@@ -33,19 +33,21 @@ console in dev).
 
 ## How data is fetched
 
-- **USDA FSIS** sends **no CORS headers** and rejects non-browser requests, so
-  the front-end never calls it directly:
-  - *Dev:* `vite.config.js` proxies `/api/recall` → the FSIS endpoint (adding a
-    browser `User-Agent`).
-  - *Prod:* point `VITE_RECALL_API` at your own proxy (serverless function,
-    nginx, Cloudflare Worker, …).
-- **openFDA** sends `Access-Control-Allow-Origin: *`, so the browser calls
-  `https://api.fda.gov/food/enforcement.json` directly. It's fetched in pages of
+Both APIs are called **directly from the browser** — they each send
+`Access-Control-Allow-Origin: *`.
+
+- **USDA FSIS** (`https://www.fsis.usda.gov/fsis/api/recall/v/1`): its Akamai
+  edge blocks datacenter / hosting IPs (a serverless proxy on Vercel or Lambda
+  gets `403`), but real browsers on normal connections are fine, so a
+  production build hits it directly. In **dev** the request is routed through
+  the Vite proxy (`/api/recall` in `vite.config.js`) just to keep it same-origin
+  and quiet. Override with `VITE_RECALL_API` (e.g. your own residential-IP proxy).
+- **openFDA** (`https://api.fda.gov/food/enforcement.json`): fetched in pages of
   1 000 (`sort=recall_initiation_date:desc`, `skip` up to the 25 000 no-key cap).
   Override with `VITE_FDA_API`.
 - **Fallback:** each source independently falls back to its slice of a
   deterministic bundled sample dataset (`src/data/sampleRecalls.js`) and shows an
-  amber "sample" badge, so one API being down never blanks the app.
+  amber "sample" badge, so an API being blocked or down never blanks the app.
 
 ## What you can slice
 

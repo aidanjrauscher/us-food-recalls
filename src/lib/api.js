@@ -1,9 +1,15 @@
 import { generateSampleRecalls } from '../data/sampleRecalls.js'
 import { normalizeFsisAll, normalizeFdaAll, finalizeRecords } from './transform.js'
 
-// USDA FSIS: no CORS + rejects non-browser UAs → must go through the Vite dev
-// proxy (see vite.config.js). Override with VITE_RECALL_API in production.
-const FSIS_ENDPOINT = import.meta.env.VITE_RECALL_API || '/api/recall'
+// USDA FSIS actually sends `Access-Control-Allow-Origin: *`, so a real browser
+// on a normal connection can call it directly — that's what we do in a
+// production build. Its Akamai edge only blocks datacenter/hosting IPs (a
+// Vercel/Lambda proxy gets 403), so proxying server-side would be worse, not
+// better. In dev we still route through the Vite proxy (see vite.config.js) to
+// keep the request same-origin and quiet. Override either with VITE_RECALL_API.
+const FSIS_ENDPOINT =
+  import.meta.env.VITE_RECALL_API ||
+  (import.meta.env.DEV ? '/api/recall' : 'https://www.fsis.usda.gov/fsis/api/recall/v/1')
 
 // openFDA: sends `Access-Control-Allow-Origin: *`, so the browser can call it
 // directly in dev and prod. Override with VITE_FDA_API if you want a proxy.
