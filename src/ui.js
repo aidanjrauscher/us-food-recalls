@@ -39,6 +39,18 @@ export function renderShell(root) {
         </div>
       </header>
 
+      <div id="dashboard-body" class="relative">
+      <div id="loading" class="absolute inset-0 z-20 flex flex-col items-center gap-3 rounded-xl bg-slate-950/70 pt-24 backdrop-blur-sm transition-opacity duration-300">
+        <div class="sticky top-24 flex flex-col items-center gap-3">
+          <svg class="h-8 w-8 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+          </svg>
+          <p class="text-sm font-medium text-slate-300">Loading recall data…</p>
+          <p class="text-xs text-slate-500">Fetching several years of records from the USDA and FDA APIs</p>
+        </div>
+      </div>
+
       <section id="stat-cards" class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"></section>
 
       <section class="mb-6 space-y-3 rounded-xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
@@ -114,6 +126,7 @@ export function renderShell(root) {
           </table>
         </div>
       </section>
+      </div>
 
       <footer class="mx-auto mt-8 max-w-3xl space-y-2 text-center text-xs leading-relaxed text-slate-600">
         <p>Data: USDA FSIS Recall API + openFDA Food Enforcement API, both from January 2016 on.</p>
@@ -134,6 +147,7 @@ export function renderShell(root) {
   `
 
   return {
+    loading: root.querySelector('#loading'),
     sourceBadge: root.querySelector('#source-badge'),
     statCards: root.querySelector('#stat-cards'),
     windowToggle: root.querySelector('#window-toggle'),

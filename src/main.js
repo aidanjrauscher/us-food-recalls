@@ -177,6 +177,13 @@ function mountDateBasisToggle() {
   })
 }
 
+function hideLoading() {
+  const el = els.loading
+  if (!el) return
+  el.classList.add('opacity-0', 'pointer-events-none')
+  setTimeout(() => el.remove(), 300)
+}
+
 async function init() {
   const { records, sources } = await loadAllRecalls()
   renderSourceBadges(els.sourceBadge, sources)
@@ -197,6 +204,10 @@ async function init() {
   })
 
   render()
+  hideLoading()
 }
 
-init()
+init().catch((err) => {
+  console.error('Failed to initialize dashboard', err)
+  hideLoading()
+})
