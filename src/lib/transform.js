@@ -129,6 +129,18 @@ export function normalizeFdaRecord(r) {
   const status = String(r.status || '').trim()
   const firm = stripHtml(r.recalling_firm)
 
+  // openFDA has no per-recall page, and the recall number ("F-1234-2026") never
+  // appears in the FDA site's press-release text — searching on it always came
+  // back empty. Search the recalls page by firm name instead: it lands on the
+  // press release for the higher-profile recalls that have one, and on a valid
+  // FDA search-results page for that firm otherwise. Trim the "C/O <logistics>"
+  // tail and a trailing legal suffix so more searches hit.
+  const firmQuery = firm
+    .replace(/\s+c\/o\b.*/i, '')
+    .replace(/[,.]?\s+(inc|llc|l\.l\.c|lp|l\.p|corp|co|ltd|plc|company|incorporated)\.?\s*$/i, '')
+    .trim()
+  const FDA_RECALLS_URL = 'https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts'
+
   return {
     id: r.recall_number || r.event_id || crypto.randomUUID(),
     number: r.recall_number || '',
@@ -156,9 +168,9 @@ export function normalizeFdaRecord(r) {
     company: firm,
     states,
     summary: stripHtml(r.product_description),
-    url: r.recall_number
-      ? `https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts?search_api_fulltext=${encodeURIComponent(r.recall_number)}`
-      : 'https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts',
+    url: firmQuery
+      ? `${FDA_RECALLS_URL}?search_api_fulltext=${encodeURIComponent(firmQuery)}`
+      : FDA_RECALLS_URL,
     agency: 'FDA',
   }
 }

@@ -83,6 +83,10 @@ const RULES = [
   ['Prepared & Packaged', /\b(soups?|stew|chili|entrees?|entrée|pizzas?|wraps?|burritos?|taquitos?|sandwich(?:es)?|bowls?|frozen (meal|dinner|entree)|dumplings?|ravioli|pasta|noodles?|fried rice|sauces?|gravy|dressings?|marinades?|salsa|dips?|hummus|guacamole|spreads?|pate|paté|meal kit|casserole|quiche|pot pie|sushi|spring rolls?|egg rolls?|appetizers?|canned|jarred|wrappers?)\b/i],
 ]
 
+// Packaging idioms that collide with food keywords — e.g. "clam shell" /
+// "clamshell" containers (berries, salads, pastries) vs. actual clams.
+const PACKAGING_NOISE = /\bclam[\s-]?shells?\b/gi
+
 /**
  * Neither agency exposes a single product-type field, so infer a coarse
  * category from the free-text product / reason fields. Heuristic — surfaced as
@@ -100,6 +104,7 @@ export function inferProductType(record) {
     .filter(Boolean)
     .join(' \n ')
     .toLowerCase()
+    .replace(PACKAGING_NOISE, ' ')
 
   for (const [label, re] of RULES) {
     if (re.test(hay)) return label

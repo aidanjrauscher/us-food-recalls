@@ -9,8 +9,9 @@ const DB_NAME = 'us-food-recalls'
 const STORE = 'kv'
 const KEY = 'recalls'
 
-// Bump when the normalized record shape changes so stale caches are ignored.
-export const CACHE_VERSION = 1
+// Bump when the normalized record shape OR its derivations change so stale
+// caches are ignored. 2: fixed FDA links + "clam shell" product mislabeling.
+export const CACHE_VERSION = 2
 
 export const TTL_MS = 60 * 60 * 1000 // 1h — under this, serve cache, no network
 export const MAX_STALE_MS = 7 * 24 * 60 * 60 * 1000 // over this, block on a fresh fetch
