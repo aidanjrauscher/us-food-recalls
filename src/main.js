@@ -1,6 +1,7 @@
 import './style.css'
 import { inject } from '@vercel/analytics'
 import { loadAllRecalls } from './lib/api.js'
+import { readCache, writeCache, TTL_MS, MAX_STALE_MS } from './lib/cache.js'
 import { buildMonthlySeries, monthLabel, tally, applyDateBasis } from './lib/transform.js'
 import {
   RISK_LEVELS,
@@ -208,19 +209,15 @@ function hideLoading() {
   setTimeout(() => el.remove(), 300)
 }
 
-async function init() {
-  const { records, sources } = await loadAllRecalls()
-  renderSourceBadges(els.sourceBadge, sources)
-
-  state.all = records
-  rebaseDates()
-
+// Wire the toggles / filters / listeners. Runs exactly once.
+function mountControls() {
   mountWindowToggle()
   mountStackToggle()
   mountDateBasisToggle()
   buildAgencyFilters(els.agencyFilters, state.agencies, render)
   buildRiskFilters(els.riskFilters, state.risks, render)
   buildTypeFilters(els.typeFilters, state.types, render)
+
   els.activeOnly.checked = state.activeOnly // browsers restore checkbox state on reload
   els.activeOnly.addEventListener('change', (e) => {
     state.activeOnly = e.target.checked
@@ -232,8 +229,50 @@ async function init() {
     state.search = e.target.value.trim()
     updateTable()
   })
+}
 
+// Swap in a data payload (from cache or the network) and redraw everything.
+// Idempotent — safe to call again when a background refresh lands. Records are
+// stored/loaded on the 'initiation' basis, which is also the default, so
+// rebaseDates() here is a no-op on a fresh payload.
+function applyData({ records, sources }) {
+  state.all = records
+  rebaseDates()
+  renderSourceBadges(els.sourceBadge, sources)
   render()
+}
+
+const bothLive = (p) => p.sources.length > 0 && p.sources.every((s) => s.status === 'live')
+
+async function revalidate() {
+  try {
+    const payload = await loadAllRecalls()
+    if (bothLive(payload)) {
+      await writeCache(payload)
+      applyData(payload)
+    }
+  } catch (err) {
+    console.warn('Background recall-data refresh failed', err)
+  }
+}
+
+async function init() {
+  mountControls()
+
+  const cached = await readCache()
+  const age = cached ? Date.now() - cached.fetchedAt : Infinity
+
+  if (cached && age < MAX_STALE_MS) {
+    // Fresh enough to show now. Under TTL: that's it. Over TTL: refresh quietly.
+    applyData(cached)
+    hideLoading()
+    if (age >= TTL_MS) revalidate()
+    return
+  }
+
+  const payload = await loadAllRecalls()
+  if (bothLive(payload)) await writeCache(payload)
+  applyData(payload)
   hideLoading()
 }
 

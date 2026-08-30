@@ -42,12 +42,31 @@ Both APIs are called **directly from the browser** — they each send
   production build hits it directly. In **dev** the request is routed through
   the Vite proxy (`/api/recall` in `vite.config.js`) just to keep it same-origin
   and quiet. Override with `VITE_RECALL_API` (e.g. your own residential-IP proxy).
-- **openFDA** (`https://api.fda.gov/food/enforcement.json`): fetched in pages of
-  1 000 (`sort=recall_initiation_date:desc`, `skip` up to the 25 000 no-key cap).
-  Override with `VITE_FDA_API`.
+- **openFDA** (`https://api.fda.gov/food/enforcement.json`): `skip` is hard-capped
+  at 25 000, so instead of one paged query we fetch **one calendar year at a
+  time** (`recall_initiation_date:[YYYY0101 TO YYYY1231]`, 4 years in flight),
+  which pulls every record from `START_YEAR` to now and keeps working as the
+  archive grows. Each request retries transient `429`/`5xx`; a year that still
+  can't be completed throws so FDA falls back rather than silently dropping ~a
+  year of recalls. Override with `VITE_FDA_API`.
 - **Fallback:** each source independently falls back to its slice of a
   deterministic bundled sample dataset (`src/data/sampleRecalls.js`) and shows an
   amber "sample" badge, so an API being blocked or down never blanks the app.
+
+## Client-side caching
+
+The merged, normalized payload (~20 k records) is cached in **IndexedDB**
+(`src/lib/cache.js`) so repeat visits don't re-hit either API:
+
+- **< 1 h old** (`TTL_MS`): rendered straight from cache, zero network.
+- **1 h – 7 d old**: cached data renders immediately, then a background
+  `revalidate()` refetches and silently swaps in the fresh result.
+- **older / missing / unreadable** (private mode, quota, …): normal blocking
+  fetch behind the loading overlay.
+
+Only a fully-live payload is ever written back, so a transient FSIS `403` for
+one visitor can't get frozen in. Bump `CACHE_VERSION` in `src/lib/cache.js` if
+the normalized record shape changes.
 
 ## What you can slice
 
@@ -93,11 +112,13 @@ Both APIs are called **directly from the browser** — they each send
 
 ```
 src/
-  main.js                state + wiring
-  lib/api.js             parallel dual-source fetch, START_YEAR clip, sample fallback
+  main.js                state + wiring, cache-first init, background revalidate
+  lib/api.js             dual-source fetch (FSIS direct, openFDA year-chunked), sample fallback
+  lib/cache.js           IndexedDB payload cache (TTL + stale-while-revalidate)
   lib/transform.js       date parsing, FSIS + FDA normalizers, monthly aggregation
   lib/categorize.js      agency / risk / product-type buckets + colors + heuristic
   charts.js              Chart.js config (1 stacked bar + 2 doughnuts)
   ui.js                  DOM shell, filter controls, stat cards, table
   data/sampleRecalls.js  offline stand-in for both feeds
+public/favicon.svg       amber warning-triangle mark
 ```
